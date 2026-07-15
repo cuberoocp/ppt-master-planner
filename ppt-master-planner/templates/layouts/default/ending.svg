@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <!-- LAYOUT:ending PAGE_KEY:ending -->
+  <rect width="1920" height="1080" fill="#1a1a2e"/>
+  <circle cx="960" cy="400" r="200" fill="none" stroke="#e94560" stroke-width="2" opacity="0.3"/>
+  <circle cx="960" cy="400" r="120" fill="none" stroke="#e94560" stroke-width="1" opacity="0.5"/>
+  <text x="960" y="380" font-family="Microsoft YaHei, sans-serif" font-size="56" font-weight="bold" fill="#ffffff" text-anchor="middle">感谢聆听</text>
+  <text x="960" y="450" font-family="Microsoft YaHei, sans-serif" font-size="28" fill="#a0a0b0" text-anchor="middle">THANK YOU</text>
+  <line x1="760" y1="500" x2="1160" y2="500" stroke="#e94560" stroke-width="2"/>
+  <text x="960" y="700" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#606080" text-anchor="middle">{CLOSING_MESSAGE}</text>
+  <text x="960" y="760" font-family="Arial, sans-serif" font-size="18" fill="#404060" text-anchor="middle">{CONTACT_INFO}</text>
+  <text x="960" y="1000" font-family="Arial, sans-serif" font-size="14" fill="#303050" text-anchor="middle">{POWERED_BY}</text>
+</svg>
