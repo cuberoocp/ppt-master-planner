@@ -26,3 +26,7 @@ desktop.ini
 
 # Node
 node_modules/
+
+# Temp files
+images/
+--output
