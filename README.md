@@ -34,7 +34,12 @@ ppt-master-planner-repo/
 │   ├── scripts/           ← Python tool scripts
 │   ├── templates/         ← Layout, chart, icon, brand templates
 │   └── workflows/         ← Standalone workflow files
-└── projects/              ← User project workspace (gitignored)
+├── docs/                  ← User-facing documentation
+├── examples/              ← Example projects
+├── projects/              ← User project workspace (gitignored)
+├── .github/               ← GitHub CI workflows
+├── LICENSE                ← MIT License
+└── README.md              ← This file
 ```
 
 ## License

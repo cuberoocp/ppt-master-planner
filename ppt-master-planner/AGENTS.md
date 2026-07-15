@@ -12,13 +12,13 @@ PPT Master Planner is an AI-driven presentation generation system with an integr
 
 ## Required Conventions
 
-- Repo-wide style rules in [`docs/rules/`](docs/rules/).
-- Markdown files under `workflows/`, `references/`, and `docs/` are single-language per directory.
+- Repo-wide style rules in [`../docs/rules/`](../docs/rules/).
+- Markdown files under `workflows/`, `references/`, and `../docs/` are single-language per directory.
 
 ## Compatibility Boundary
 
 - This repository is a workflow/skill package, not an app or service scaffold.
-- On conflict with a generic coding skill, prioritize [`ppt-master-planner/SKILL.md`](ppt-master-planner/SKILL.md).
+- On conflict with a generic coding skill, prioritize [`SKILL.md`](SKILL.md).
 
 ## Core Directories
 
@@ -27,6 +27,3 @@ PPT Master Planner is an AI-driven presentation generation system with an integr
 - `scripts/` — tool scripts
 - `templates/` — layout, icon, chart, brand templates
 - `workflows/` — standalone workflow files
-- `docs/` — user-facing documentation
-- `examples/` — example projects
-- `projects/` — user project workspace
