@@ -42,6 +42,13 @@ ppt-master-planner-repo/
 └── README.md              ← This file
 ```
 
+## Acknowledgments
+
+This project is built upon and inspired by two open-source skills:
+
+- **[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)** — SVG-to-PPTX execution pipeline
+- **[thePlannerIvan/planners-ppt-hell](https://github.com/thePlannerIvan/planners-ppt-hell)** — Planning phase workflows
+
 ## License
 
 MIT

@@ -53,3 +53,10 @@ Source → Planning → Content Polish → Strategist → DRAFT(batch) → REVIE
 ```
 
 See [`ppt-master-planner/SKILL.md`](ppt-master-planner/SKILL.md) for the full workflow.
+
+## Acknowledgments
+
+This skill is built upon and inspired by:
+
+- **[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)** — SVG-to-PPTX execution pipeline
+- **[thePlannerIvan/planners-ppt-hell](https://github.com/thePlannerIvan/planners-ppt-hell)** — Planning phase workflows
