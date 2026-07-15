@@ -7,13 +7,13 @@
 ## Quick Install
 
 ```shell
-npx skills add https://github.com/<your-org>/ppt-master-planner/tree/main/ppt-master-planner --skill ppt-master-planner
+npx skills add https://github.com/cuberoocp/ppt-master-planner/tree/main/ppt-master-planner --skill ppt-master-planner
 ```
 
 Or clone and copy:
 
 ```shell
-git clone https://github.com/<your-org>/ppt-master-planner.git
+git clone https://github.com/cuberoocp/ppt-master-planner.git
 cp -R ppt-master-planner/ppt-master-planner ~/.claude/skills/ppt-master-planner
 ```
 
