@@ -1,43 +1,55 @@
-# PPT Master Planner
+# PPT Master Planner Skill
 
-> AI-driven presentation generator with integrated project planning. An open-source skill merging PPT Master's execution pipeline with explicit planning workflows.
+> AI-driven presentation generation system with integrated planning phase. Converts source documents into natively editable PPTX through a 6-state pipeline.
 
 **Version**: 0.1.0
 
-**Core Pipeline**: `Source Document → Planning Phase → Create Project → [Template] → Strategist → [Image_Generator] → Executor → Quality Check → Post-processing → Export`
+**Core Pipeline**: `Source → Planning → Content Polish → Strategist → DRAFT(batch) → REVIEW → EXPORT`
 
-## Quick Install
+**State Machine**: `approach → content → plan → draft → review → export`
 
-```shell
-npx skills add https://github.com/cuberoocp/ppt-master-planner/tree/main/ppt-master-planner --skill ppt-master-planner
-```
+## Prerequisites
 
-Or clone and copy:
+- Python 3.10+
+- Install dependencies: `pip install -r requirements.txt`
 
-```shell
-git clone https://github.com/cuberoocp/ppt-master-planner.git
-cp -R ppt-master-planner/ppt-master-planner ~/.claude/skills/ppt-master-planner
-```
+## Usage
 
-Then ask your agent:
+After installing the skill, tell your AI agent:
 
 ```
 Use ppt-master-planner to turn this document into an editable PPTX with planning.
 Start from content planning, then show me the outline before generating SVG pages.
 ```
 
-## Project Structure
+The agent will guide you through the 6-step pipeline:
+
+| Step | State | Description |
+|------|-------|-------------|
+| 0 | approach | Clarify intent, collect source materials |
+| 1 | content | Source analysis, content strategy, outline |
+| 2 | plan | Design spec, color palette, layout strategy |
+| 3 | draft | SVG page generation (batch) |
+| 4 | review | Visual quality check & approval |
+| 5 | export | SVG→PPTX conversion |
+
+## Scripts Overview
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/pptflow.py` | State machine controller |
+| `scripts/pipeline_gate.py` | Phase gate validation |
+| `scripts/init_project.py` | Project initialization |
+| `scripts/planner.py` | Content strategy & outline |
+| `scripts/native_svg_to_ppt.py` | SVG→PPTX conversion |
+| `scripts/validate_svg_layout.py` | SVG quality check |
+| `scripts/review_server.py` | Visual review HTTP server |
+| `scripts/source_to_md/*.py` | Source format converters |
+
+## Pipeline Overview
 
 ```
-ppt-master-planner/
-├── SKILL.md              ← Main workflow authority (start here)
-├── agents/               ← Agent config files
-├── references/           ← Role definitions and technical specs
-├── scripts/              ← Python tool scripts
-├── templates/            ← Layout, chart, icon, brand templates
-└── workflows/            ← Standalone workflow files
+Source → Planning → Content Polish → Strategist → DRAFT(batch) → REVIEW → EXPORT
 ```
 
-## License
-
-MIT
+See [`ppt-master-planner/SKILL.md`](ppt-master-planner/SKILL.md) for the full workflow.
