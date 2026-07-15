@@ -2,6 +2,8 @@
 
 > AI-driven presentation generator with integrated project planning. An open-source skill merging PPT Master's execution pipeline with explicit planning workflows.
 
+**Version**: 0.1.0
+
 **Core Pipeline**: `Source Document → Planning Phase → Create Project → [Template] → Strategist → [Image_Generator] → Executor → Quality Check → Post-processing → Export`
 
 ## Quick Install
