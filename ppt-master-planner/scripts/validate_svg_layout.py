@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
+# Planning/review workflow inspired by thePlannerIvan/planners-ppt-hell (AGPL-3.0)
 """SVG Layout Validator v2.0
 
 Heuristic SVG validation for PPT Master Planner. Checks canvas contract,
@@ -26,10 +28,26 @@ BANNED_ATTRS = {"stroke-dasharray", "textLength", "lengthAdjust"}
 BANNED_TRANSFORMS = {"rotate"}
 
 
-def check_svg(svg_path: Path, manifest_entry: dict = None) -> dict:
+def load_canvas_size(project_dir: str):
+    flow_state = Path(project_dir) / "_internal" / "00_project" / "flow_state.json"
+    if flow_state.exists():
+        try:
+            data = json.loads(flow_state.read_text(encoding="utf-8"))
+            cfg = data.get("pipeline_config", {})
+            w = cfg.get("canvas_width")
+            h = cfg.get("canvas_height")
+            if w and h:
+                return int(w), int(h)
+        except Exception:
+            pass
+    return 1920, 1080
+
+
+def check_svg(svg_path: Path, manifest_entry: dict = None, canvas: tuple = None) -> dict:
     """Validate a single SVG file. Returns list of issues."""
     issues = []
     page_key = manifest_entry.get("page_key", svg_path.stem) if manifest_entry else svg_path.stem
+    canvas_w, canvas_h = canvas or (CANVAS_W, CANVAS_H)
 
     try:
         tree = ET.parse(str(svg_path))
@@ -42,15 +60,15 @@ def check_svg(svg_path: Path, manifest_entry: dict = None) -> dict:
     h = root.get("height")
     vb = root.get("viewBox")
 
-    if w != f"{CANVAS_W}":
+    if w != f"{canvas_w}":
         issues.append({"level": "error", "code": "CANVAS_WIDTH", "page": page_key,
-                       "message": f"Expected width={CANVAS_W}, got {w}"})
-    if h != f"{CANVAS_H}":
+                       "message": f"Expected width={canvas_w}, got {w}"})
+    if h != f"{canvas_h}":
         issues.append({"level": "error", "code": "CANVAS_HEIGHT", "page": page_key,
-                       "message": f"Expected height={CANVAS_H}, got {h}"})
-    if vb != f"0 0 {CANVAS_W} {CANVAS_H}":
+                       "message": f"Expected height={canvas_h}, got {h}"})
+    if vb != f"0 0 {canvas_w} {canvas_h}":
         issues.append({"level": "error", "code": "VIEWBOX", "page": page_key,
-                       "message": f"Expected viewBox='0 0 {CANVAS_W} {CANVAS_H}', got '{vb}'"})
+                       "message": f"Expected viewBox='0 0 {canvas_w} {canvas_h}', got '{vb}'"})
 
     if ns := root.tag:
         if "}" in root.tag:
@@ -124,7 +142,7 @@ def check_svg(svg_path: Path, manifest_entry: dict = None) -> dict:
             issues.append({"level": "warning", "code": "TEXT_NEAR_LEFT_EDGE",
                            "page": page_key,
                            "message": f"Text x={x} < safe margin {SAFE_MARGIN}: '{tex.text or ''}'"})
-        if x > CANVAS_W - SAFE_MARGIN:
+        if x > canvas_w - SAFE_MARGIN:
             issues.append({"level": "blocker", "code": "TEXT_OVERFLOW_RIGHT",
                            "page": page_key,
                            "message": f"Text x={x} exceeds canvas right edge: '{tex.text or ''}'"})
@@ -137,7 +155,7 @@ def check_svg(svg_path: Path, manifest_entry: dict = None) -> dict:
         iw = float(img.get("width", 0))
         ih = float(img.get("height", 0))
 
-        if ix + iw > CANVAS_W + 2 or iy + ih > CANVAS_H + 2:
+        if ix + iw > canvas_w + 2 or iy + ih > canvas_h + 2:
             issues.append({"level": "error", "code": "IMAGE_OUT_OF_BOUNDS",
                            "page": page_key,
                            "message": f"Image at ({ix},{iy}) size ({iw}x{ih}) exceeds canvas"})
@@ -163,6 +181,7 @@ def validate_project(project_dir: str, batch_num: int = None):
     p = Path(project_dir)
     svg_dir = p / "_internal" / "02_svg_source"
     manifest_path = p / "_internal" / "00_project" / "page_manifest.json"
+    canvas = load_canvas_size(str(p))
 
     if not svg_dir.exists():
         print(f"[ERROR] SVG directory not found: {svg_dir}", file=sys.stderr)
@@ -186,7 +205,7 @@ def validate_project(project_dir: str, batch_num: int = None):
     for svg_path in svg_files:
         page_key = svg_path.stem.replace(f"batch_{batch_num}_", "") if batch_num else svg_path.stem
         entry = manifest.get(page_key, {})
-        issues = check_svg(svg_path, entry)
+        issues = check_svg(svg_path, entry, canvas)
         all_issues.extend(issues)
 
     # ─── Summary ────────────────────────────────────────────────────
@@ -248,11 +267,15 @@ def main():
         if args.batch:
             svg_files = [f for f in svg_files if f"batch_{args.batch}_" in f.name]
 
+        # resolve project root from manifest path to load canvas size
+        proj_root = manifest_path.resolve().parents[2] if manifest_path else p
+        canvas = load_canvas_size(str(proj_root))
+
         all_issues = []
         for svg_path in svg_files:
             page_key = svg_path.stem
             entry = manifest.get(page_key, {})
-            all_issues.extend(check_svg(svg_path, entry))
+            all_issues.extend(check_svg(svg_path, entry, canvas))
 
         summary = {
             "validated_files": len(svg_files),

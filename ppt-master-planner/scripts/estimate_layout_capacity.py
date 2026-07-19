@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
+# Planning/review workflow inspired by thePlannerIvan/planners-ppt-hell (AGPL-3.0)
 """Estimate layout capacity — check if wireframe zones can hold planned text.
 
 Reads page_content.json and layout_plan.json, estimates text fit per zone.

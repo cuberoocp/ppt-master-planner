@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
 """PDF to Markdown converter (delegates to source_to_md.py)."""
 
 import sys

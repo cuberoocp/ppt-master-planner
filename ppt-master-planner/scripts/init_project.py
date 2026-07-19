@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
+# Planning/review workflow inspired by thePlannerIvan/planners-ppt-hell (AGPL-3.0)
 """PPT Master Planner — Project initialization scaffold.
 
 Creates the _internal/ directory structure, writes empty contract files,
@@ -70,6 +72,13 @@ PIPELINE_CONFIG_TEMPLATE = {
     "min_font_size_px": 20,
 }
 
+PROJECT_INFO_TEMPLATE = {
+    "audience": "",
+    "delivery_context": "",
+    "language": "zh",
+    "tone": "",
+}
+
 
 def create_structure(base: Path, struct: dict, parent: Path = None):
     """Recursively create directory structure."""
@@ -87,7 +96,9 @@ def write_json(path: Path, data: dict):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def init_project(project_dir: str, source: str = None, canvas_format: str = "ppt169"):
+def init_project(project_dir: str, canvas_format: str = "ppt169",
+                 width: int = None, height: int = None,
+                 audience: str = "", delivery_context: str = "", language: str = "zh", tone: str = ""):
     project_path = Path(project_dir)
     if project_path.exists():
         print(f"[ERROR] Project directory already exists: {project_dir}", file=sys.stderr)
@@ -101,7 +112,11 @@ def init_project(project_dir: str, source: str = None, canvas_format: str = "ppt
         "square": (1080, 1080),
     }
 
-    w, h = canvas_config.get(canvas_format, (1920, 1080))
+    if width and height:
+        w, h = int(width), int(height)
+        canvas_format = "custom"
+    else:
+        w, h = canvas_config.get(canvas_format, (1920, 1080))
 
     project_path.mkdir(parents=True, exist_ok=True)
 
@@ -121,6 +136,13 @@ def init_project(project_dir: str, source: str = None, canvas_format: str = "ppt
     flow_state["pipeline_config"]["canvas_format"] = canvas_format
     flow_state["pipeline_config"]["canvas_width"] = w
     flow_state["pipeline_config"]["canvas_height"] = h
+    flow_state["project_info"] = dict(PROJECT_INFO_TEMPLATE)
+    flow_state["project_info"].update({
+        "audience": audience,
+        "delivery_context": delivery_context,
+        "language": language,
+        "tone": tone,
+    })
     write_json(internal / "00_project" / "flow_state.json", flow_state)
 
     write_json(internal / "00_project" / "flow_events.jsonl", {})
@@ -149,17 +171,12 @@ def init_project(project_dir: str, source: str = None, canvas_format: str = "ppt
 
     write_json(internal / "00_project" / "manifest.json", {"project": project_path.name, "page_count": 0})
 
-    if source:
-        src_path = Path(source)
-        if src_path.exists():
-            sources_dir = project_path / "sources"
-            sources_dir.mkdir(exist_ok=True)
-            import shutil
-            shutil.copy2(src_path, sources_dir / src_path.name)
-            print(f"[COPY] {source} -> {sources_dir / src_path.name}")
-
     print(f"[OK] Project initialized at {project_path}")
     print(f"[OK] Canvas: {canvas_format} ({w}x{h})")
+    info = flow_state["project_info"]
+    if any(info.values()):
+        print(f"[OK] Project info: audience='{info['audience']}' context='{info['delivery_context']}' "
+              f"lang='{info['language']}' tone='{info['tone']}'")
     print(f"[OK] Current state: approach")
     print(f"[NEXT] Run: python scripts/pptflow.py {project_dir} next")
 
@@ -167,12 +184,18 @@ def init_project(project_dir: str, source: str = None, canvas_format: str = "ppt
 def main():
     parser = argparse.ArgumentParser(description="PPT Master Planner — project init")
     parser.add_argument("project_dir", help="Project directory path")
-    parser.add_argument("--source", help="Source file to copy into project")
     parser.add_argument("--format", default="ppt169",
-                        choices=["ppt169", "ppt43", "xhs", "story", "square"],
-                        help="Canvas format (default: ppt169)")
+                        choices=["ppt169", "ppt43", "xhs", "story", "square", "custom"],
+                        help="Canvas format preset (default: ppt169). Use 'custom' with --width/--height for arbitrary size.")
+    parser.add_argument("--width", type=int, default=None, help="Custom canvas width in px (with --format custom)")
+    parser.add_argument("--height", type=int, default=None, help="Custom canvas height in px (with --format custom)")
+    parser.add_argument("--audience", default="", help="Target audience")
+    parser.add_argument("--delivery-context", default="", help="Delivery context (e.g. conference, internal report)")
+    parser.add_argument("--language", default="zh", help="Presentation language (default: zh)")
+    parser.add_argument("--tone", default="", help="Tone (e.g. formal, energetic)")
     args = parser.parse_args()
-    init_project(args.project_dir, args.source, args.format)
+    init_project(args.project_dir, args.format, args.width, args.height,
+                 args.audience, args.delivery_context, args.language, args.tone)
 
 
 if __name__ == "__main__":

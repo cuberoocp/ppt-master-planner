@@ -1,3 +1,4 @@
+<!-- Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master -->
 # Canvas Formats
 
 | Format | Aspect Ratio | Width x Height (px) | Use Case |

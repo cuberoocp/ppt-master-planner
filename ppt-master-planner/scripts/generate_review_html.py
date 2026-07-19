@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
+# Planning/review workflow inspired by thePlannerIvan/planners-ppt-hell (AGPL-3.0)
 """Generate visual review HTML page.
 
 Reads SVG pages, validation summary, and renders an interactive 02_visual_review.html

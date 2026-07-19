@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
+# Planning/review workflow inspired by thePlannerIvan/planners-ppt-hell (AGPL-3.0)
 """SVG to Native PPTX Converter v2.0
 
 Converts hand-crafted SVG pages into native PowerPoint shapes (DrawingML).
@@ -11,6 +13,7 @@ Usage:
 
 import argparse
 import base64
+import io
 import os
 import re
 import sys
@@ -28,7 +31,8 @@ CANVAS_PX_W = 1920
 CANVAS_PX_H = 1080
 PPT_SLIDE_W = Inches(13.333)
 PPT_SLIDE_H = Inches(7.5)
-PX_TO_EMU = 914400 / CANVAS_PX_W  # 914400 EMU per inch, 13.333in = 1920px
+PX_PER_INCH = 96
+PX_TO_EMU = 914400 / PX_PER_INCH  # 914400 EMU per inch / 96 px per inch = 9525 EMU per px
 
 
 def emu(px_x: float, px_y: float = None) -> int:
@@ -92,8 +96,9 @@ def add_image(slide, href: str, x: float, y: float, w: float, h: float, preserve
         img_data = img_path.read_bytes()
 
     try:
+        import io as _io
         slide.shapes.add_picture(
-            io.BytesIO(img_data) if "data:" in href else img_data,
+            _io.BytesIO(img_data) if "data:" in href else _io.BytesIO(img_data),
             emu(x), emu(y), emu(w), emu(h)
         )
     except Exception as e:
@@ -338,9 +343,14 @@ def convert_project(project_dir: str, output_path: str = None):
         sys.exit(1)
 
     prs = Presentation()
-    prs.slide_width = PPT_SLIDE_W
-    prs.slide_height = PPT_SLIDE_H
     blank_layout = prs.slide_layouts[6]
+
+    # set slide size from the first SVG's viewBox (assumes uniform canvas across pages)
+    first_root = ET.parse(str(svg_files[0])).getroot()
+    fb = first_root.get("viewBox", "0 0 1920 1080").split()
+    fb_w, fb_h = (float(fb[2]), float(fb[3])) if len(fb) == 4 else (1920.0, 1080.0)
+    prs.slide_width = int(fb_w * PX_TO_EMU)
+    prs.slide_height = int(fb_h * PX_TO_EMU)
 
     for svg_path in svg_files:
         print(f"  [SLIDE] {svg_path.name}")

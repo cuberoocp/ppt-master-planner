@@ -4,6 +4,11 @@ python-docx>=1.1.0
 openpyxl>=3.1.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
-cairosvg>=2.7.0
 Pillow>=10.0.0
 lxml>=5.0.0
+
+# Optional: PNG preview rendering (scripts/render_svg_png.py).
+# Uses Playwright + Chromium, NOT cairosvg. Not declared as a hard
+# dependency (matches upstream planners-ppt-hell, which only prompts to
+# install it). Install when needed:
+#   pip install playwright && playwright install chromium

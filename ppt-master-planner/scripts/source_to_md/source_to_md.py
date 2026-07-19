@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master
 """Unified source to Markdown converter.
 
 Converts various source formats to Markdown for downstream processing.
@@ -129,6 +130,56 @@ def convert_pptx(input_path: str, output_path: str = None):
     return output
 
 
+def should_skip_image(tag, src: str) -> bool:
+    """Return True if the <img> is a decorative/site-chrome asset to exclude.
+
+    Skips favicons, logos, navigation icons, avatars, QR codes, and other
+    non-content images so they don't pollute the source Markdown.
+    """
+    src_l = src.lower()
+    # 1) Path / filename heuristics for site chrome
+    chrome_tokens = (
+        "favicon", "logo", "icon", "avatar", "badge", "qr", "qrcode",
+        "social", "footer", "header", "nav", "banner", "og-image",
+        "opengraph", "twitter-card", "share", "spinner", "loader",
+        "pixel", "tracking", "analytics", "advert", "btn", "button",
+        "arrow", "chevron", "bullet", "placeholder",
+    )
+    if any(tok in src_l for tok in chrome_tokens):
+        return True
+
+    # 2) Explicit semantic hints on the <img> element
+    classes = " ".join(tag.get("class", [])).lower()
+    attrs = " ".join(
+        str(tag.get(k, "")).lower()
+        for k in ("role", "aria-label", "aria-hidden", "itemprop", "rel")
+    )
+    if "aria-hidden" in attrs and "true" in attrs:
+        return True
+    if any(tok in classes for tok in ("logo", "icon", "avatar", "nav", "footer", "header", "badge", "qr")):
+        return True
+    if "presentation" in attrs or tag.get("role") == "presentation":
+        return True
+
+    # 3) Tiny images are almost always icons / spacers / tracking pixels
+    try:
+        w = int(tag.get("width", 0) or 0)
+        h = int(tag.get("height", 0) or 0)
+        if (w and w <= 64) or (h and h <= 64):
+            return True
+        # 4) Square / near-square images are logos or icons, not content
+        #    diagrams. Content figures are typically wide (ratio >= ~1.2).
+        if w and h:
+            ratio = max(w, h) / min(w, h)
+            is_vector = src_l.endswith(".svg")
+            if ratio < 1.2 or (is_vector and w == h):
+                return True
+    except (ValueError, TypeError):
+        pass
+
+    return False
+
+
 def convert_web(url: str, output_path: str = None):
     """Fetch URL, download images, and convert to Markdown with local image refs."""
     try:
@@ -169,6 +220,11 @@ def convert_web(url: str, output_path: str = None):
             if not src.startswith(("http://", "https://")):
                 from urllib.parse import urljoin
                 src = urljoin(url, src)
+
+            # Skip site-chrome / decorative images (logo, favicon, icons, etc.)
+            if should_skip_image(tag, src):
+                print(f"  [IMG] Skipped (site chrome): {src}")
+                continue
 
             if src in downloaded:
                 local_path = downloaded[src]

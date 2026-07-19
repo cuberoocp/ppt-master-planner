@@ -4,7 +4,7 @@
 
 **Version**: 0.1.0
 
-**Core Pipeline**: `Source → Planning → Content Polish → Strategist → DRAFT(batch) → REVIEW → EXPORT`
+**Core Pipeline**: `SETUP(意图+源+基本信息) → CONTENT(分析+规划+内容打磨) → PLAN(设计规范+配色) → DRAFT(SVG+校验+自检循环) → REVIEW(审阅+批准) → EXPORT(SVG→PPTX)`
 
 **State Machine**: `approach → content → plan → draft → review → export`
 
@@ -26,12 +26,12 @@ The agent will guide you through the 6-step pipeline:
 
 | Step | State | Description |
 |------|-------|-------------|
-| 0 | approach | Clarify intent, collect source materials |
-| 1 | content | Source analysis, content strategy, outline |
-| 2 | plan | Design spec, color palette, layout strategy |
-| 3 | draft | SVG page generation (batch) |
-| 4 | review | Visual quality check & approval |
-| 5 | export | SVG→PPTX conversion |
+| 0 | approach | Clarify intent, collect sources, **collect base info (canvas size, audience, language, tone)** |
+| 1 | content | Source analysis, planning, **content polish** (结构定型 → 语言压缩 → 五维评分), image decision |
+| 2 | plan | Design spec, **color palette research + confirmation**, layout strategy, `spec_lock.md` |
+| 3 | draft | SVG generation (batch); render PNG once → validate → **self-check → revise → self-check loop** → `preview-ready` gate |
+| 4 | review | Visual review HTML + review server; user approval → `visual-approved` gate |
+| 5 | export | SVG→PPTX conversion (native shapes, slide size from SVG viewBox) |
 
 ## Scripts Overview
 
@@ -49,10 +49,17 @@ The agent will guide you through the 6-step pipeline:
 ## Pipeline Overview
 
 ```
-Source → Planning → Content Polish → Strategist → DRAFT(batch) → REVIEW → EXPORT
+SETUP → CONTENT → PLAN → DRAFT → REVIEW → EXPORT
 ```
 
-See [`ppt-master-planner/SKILL.md`](ppt-master-planner/SKILL.md) for the full workflow.
+## Key Conventions
+
+- **Canvas size is collected once** at Step 0.6 (via `init_project.py --format/--width/--height`) and stored in `_internal/00_project/flow_state.json`. Every later step that depends on size — SVG bounds validation, PNG render viewport, PPTX slide size — reads this value. **Never hardcode 1920×1080.**
+- **PNG preview is rendered exactly once**, in DRAFT (Step 3). REVIEW reuses those PNGs; EXPORT never re-renders.
+- **Self-check loop**: in DRAFT, if validation reports an error or blocker warning, fix the SVG, re-render, re-validate, and re-review until clean before the `preview-ready` gate.
+- **Dependencies**: `python-pptx`, `pypdf`, `python-docx`, `openpyxl`, `requests`, `beautifulsoup4`, `Pillow`, `lxml`. PNG preview is optional and needs `playwright` + Chromium: `pip install playwright && playwright install chromium`.
+
+See [`SKILL.md`](SKILL.md) for the full workflow and gate commands.
 
 ## Acknowledgments
 

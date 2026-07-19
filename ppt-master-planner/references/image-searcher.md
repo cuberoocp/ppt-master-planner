@@ -1,3 +1,4 @@
+<!-- Based on hugohe3/ppt-master (MIT) — https://github.com/hugohe3/ppt-master -->
 # Image Searcher Reference
 
 ## Search Sources

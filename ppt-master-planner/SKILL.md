@@ -12,7 +12,7 @@ description: >
 
 > AI-driven presentation generation system with integrated project planning stage. Merges execution pipeline with explicit planning workflows for content strategy, outline design, and page-level planning before SVG generation.
 
-**Core Pipeline**: `Source → Planning → Content Polish(结构+压缩+评分) → Strategist(design_spec+spec_lock) → DRAFT(batch) → REVIEW → EXPORT`
+**Core Pipeline**: `SETUP(意图+源+基本信息) → CONTENT(分析+规划+内容打磨) → PLAN(设计规范+配色) → DRAFT(SVG+校验+自检循环) → REVIEW(审阅+批准) → EXPORT(SVG→PPTX)`
 
 **State Machine**: `approach → content → plan → draft → review → export`
 
@@ -88,7 +88,7 @@ description: >
 
 ## Main Pipeline Steps
 
-### Step 0: Approach — User Intent & Source Collection
+### Step 0: Setup — Intent, Sources & Base Info Collection
 
 **GATE**: User has expressed intent to create a presentation.
 
@@ -109,6 +109,12 @@ python scripts/source_to_md/web_to_md.py <URL>
 ```bash
 python scripts/pipeline_gate.py <project_dir> approach-ready
 ```
+
+0.6 **Collect project base info (BLOCKING)** — gather and record the project's base configuration that all later steps depend on. At minimum:
+  - Canvas format & dimensions: e.g. `ppt169` (1920×1080), `story` (1080×1920), `square` (1080×1080), or a custom width×height. Stored as `canvas_width` / `canvas_height` in the project's pipeline config (see `init_project.py`).
+  - Target audience, delivery context, language, tone.
+  - **All subsequent size-dependent steps (SVG bounds, font scaling, render viewport, PNG clip, PPTX slide size, whitespace rules) MUST read from this collected canvas size — never hardcode 1920×1080.**
+  - Recorded via `init_project.py` (Step 2.1): `--format ppt169|ppt43|xhs|story|square|custom`, with `--width/--height` for custom size, plus `--audience/--delivery-context/--language/--tone`. Values land in `_internal/00_project/flow_state.json` (`pipeline_config.canvas_width/height`, `project_info.*`).
 
 ### Step 1: Content — Source Analysis & Planning
 
@@ -151,10 +157,14 @@ python scripts/pipeline_gate.py <project_dir> content-ready
 
 **GATE**: Planning artifacts confirmed by user.
 
-2.1 Initialize project:
+2.1 Initialize project — this also records the base info collected in Step 0.6:
 ```bash
-python scripts/init_project.py <project_dir> --name <project_name>
+python scripts/init_project.py <project_dir> \
+  --format ppt169|ppt43|xhs|story|square|custom \
+  --width <W> --height <H>            # only with --format custom
+  --audience <text> --delivery-context <text> --language <lang> --tone <text>
 ```
+> 源材料统一放在项目根的 `source/`，`init_project.py` 不再复制源文件（已移除 `--source` 逻辑）。Canvas size and project info are written to `_internal/00_project/flow_state.json` and consumed by all later size-dependent steps.
 
 2.2 **Color research + auto-style application**:  
    2.2.1 Search web for 3 professional color palette options from reputable sources (Coolors, Adobe Color, PresentationGO, DesignBombs, or known brand palettes). Extract verified hex codes.  
@@ -176,7 +186,7 @@ python scripts/init_project.py <project_dir> --name <project_name>
    Write to `_internal/01_layout_plan/layout_plan.json`.
 
 2.4 **Strategist** produces `design_spec.md` and `spec_lock.md` with:
-- Canvas format (1920×1080 fixed)
+- Canvas format & dimensions — read from the collected base info (Step 0.6), NOT hardcoded to 1920×1080.
 - Visual theme (palette from research + auto-applied style values)
 - Layout strategy (from layout_plan.json)
 - Icon, font, data display specifications (from style_decisions.json / style_system.md rules)
@@ -200,72 +210,65 @@ python scripts/pipeline_gate.py <project_dir> strategist-ready
 
 **GATE**: Design spec confirmed, contracts valid.
 
-3.1 Divide pages into batches (default 3 pages/batch).
+3.1 Divide pages into batches. Batch size is not a page-count default — total page count is determined dynamically by the PLAN phase from the actual source content, never preset to a fixed number (e.g. 30). Choose a reasonable batch size (commonly 3 pages/batch) once the real page count is known.
 
-3.2 For each batch:
-  - Re-read `spec_lock.md`
-  - Write SVG pages sequentially (page by page, hand-written SVG)
-  - **Design quality self-check** — before validation, run through `references/style_system.md#design-quality-rules-critical--pre-review-self-check`. Every SVG MUST pass. If any rule is violated, fix before proceeding.
-  - Validate with:
-    ```bash
-    python scripts/validate_svg_layout.py <project_dir>/slides/slide_N.svg
-    python scripts/estimate_layout_capacity.py <project_dir>/slides/slide_N.svg
-    ```
-  - Generate review HTML:
-    ```bash
-    python scripts/generate_review_html.py <project_dir> --batch <batch_num>
-    ```
-  - Submit to review server (one-time-password):
-    ```bash
-    python scripts/review_server.py review --project <project_dir> --batch <batch_num>
-    ```
+3.2 For each batch, generate SVG pages sequentially (page by page, hand-written SVG). Before validation, run the design-quality self-check (`references/style_system.md#design-quality-rules-critical--pre-review-self-check`); every SVG MUST pass before proceeding.
 
-3.3 After all batches complete, run gate:
+3.3 Run the DRAFT command sequence (order is fixed, do not reorder):
 ```bash
+# 1. gate before draft entry
 python scripts/pipeline_gate.py <project_dir> batch-svg-ready --batch <N>
+# 2. render PNG preview (ONCE per batch) — viewport/clip read from collected canvas size
+python scripts/render_svg_png.py <project_dir>
+# 3. static layout validation → _internal/04_validation/validation_summary.json
+python scripts/validate_svg_layout.py <project_dir>/_internal/02_svg_source \
+  --manifest <project_dir>/_internal/00_project/page_manifest.json --batch <N> \
+  --output <project_dir>/_internal/04_validation/validation_summary.json
+# 4. gate: requires PNG present + self-review present + validation passed
+python scripts/pipeline_gate.py <project_dir> preview-ready --batch <N>
 ```
+PNG output: `_internal/03_png_preview/slide_XX.png` (dimensions = collected canvas size).
+
+3.4 **Self-check → revise → self-check loop**: the model reviews the rendered PNG and writes `self_review.json` / `integrated_review.json` under `_internal/04_validation/`. If the validator reports error or blocker-class warning (e.g. `TEXT_OVERFLOW_MAJOR`, `FOOTER_ZONE_INVASION`), return to the SVG, fix it, then re-render PNG, re-validate, and rewrite the review JSON — repeat until no blocking errors remain before the `preview-ready` gate. Loop discipline: non-blocking warnings allow only one high-value revision pass; if the same issue type stays unresolved for two consecutive passes, escalate to PLAN / user confirmation — never silently change layout, shrink font, or split pages in the SVG stage.
 
 ### Step 4: Review — Visual Quality & Batch Approval
 
-**GATE**: All SVG pages generated, all batches reviewed.
+**GATE**: All SVG pages generated, all batches passed `preview-ready`.
 
-4.1 Generate full deck review HTML:
+4.1 Generate visual review HTML (uses the already-rendered PNGs — does NOT re-render):
 ```bash
-python scripts/generate_review_html.py <project_dir>
+python scripts/generate_review_html.py <project_dir> --batch <N>
 ```
 
-4.2 Generate layout direction review:
+4.2 (Optional) Generate layout direction review:
 ```bash
 python scripts/generate_layout_html.py <project_dir>
 ```
 
-4.3 Review server serves visual preview (BLOCKING — user must approve before export).
+4.3 Start review server; user views PNGs in browser and submits feedback (BLOCKING — user must approve before export):
+```bash
+python scripts/review_server.py <project_dir>
+```
+Feedback is written to `_internal/05_review/feedback.json` and archived per batch.
 
-4.4 Run gate:
+4.4 Run gate (sets `visual_approved` / `export_allowed` in manifest):
 ```bash
 python scripts/pipeline_gate.py <project_dir> visual-approved --batch <N>
 ```
 
 ### Step 5: Export — SVG→PPTX Conversion
 
-**GATE**: All pages approved by user.
+**GATE**: All pages approved by user (`visual-approved` set `export_allowed` for every batch).
 
-5.1 Convert all SVGs to PPTX:
+5.1 Convert all SVGs to PPTX (native python-pptx shapes; slide size derived from each SVG's viewBox, matching the collected canvas size — does NOT read PNG, does NOT re-render):
 ```bash
-python scripts/native_svg_to_ppt.py <project_dir>
+export SMART_SVG_EXPORT_APPROVED_BY_PPTFLOW=1
+python scripts/native_svg_to_ppt.py <project_dir> -o <project_dir>/../dist/<name>.pptx
 ```
 
-5.2 (Optional) Render PNG previews:
-```bash
-python scripts/render_svg_png.py <project_dir>/slides/ --output <project_dir>/previews/
-```
+5.2 Deliver final PPTX to user.
 
-5.3 Deliver final PPTX to user.
-
-5.4 Run gate:
-```bash
-python scripts/pipeline_gate.py <project_dir> export-ready
-```
+> PNG previews are produced only once, in Step 3 (DRAFT). Export never re-renders PNG.
 
 ## Core Directories
 
